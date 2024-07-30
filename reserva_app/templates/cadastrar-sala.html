@@ -3,31 +3,33 @@
     <div class="container">
         <div class="row mt-4">
             <div class="col">
-                <h1>Cadastrar Sala</h1>
-                <p>Utilize o formulário abaixo para cadastrar uma sala</p>
+                <h1>{{ 'Editar Sala' if editar else 'Cadastrar Sala' }}</h1>
+                <p>Utilize o formulário abaixo para {{ 'editar a' if editar else 'cadastrar uma' }} sala</p>
             </div>
         </div>
         <div>
             <div class="col">
                 <form action="{{ url_for('cadastrar_salas') }}" method="post">
+                    {% if editar %}
+                        <input type="hidden" name="sala_id" value="{{ sala.id }}">
+                    {% endif %}
                     <div class="mb-3">
                         <label for="tipo" class="form-label">Tipo</label>
                         <select class="form-select" id="tipo" name="tipo">
-                            <option selected>Selecione um tipo</option>
-                            <option value="Laboratório de Informática">Laboratório de Informática</option>
-                            <option value="Laboratório de Química">Laboratório de Química</option>
-                            <option value="Sala de Aula">Sala de Aula</option>
+                            <option value="Laboratório de Informática" {% if sala and sala.tipo == 'Laboratório de Informática' %}selected{% endif %}>Laboratório de Informática</option>
+                            <option value="Laboratório de Química" {% if sala and sala.tipo == 'Laboratório de Química' %}selected{% endif %}>Laboratório de Química</option>
+                            <option value="Sala de Aula" {% if sala and sala.tipo == 'Sala de Aula' %}selected{% endif %}>Sala de Aula</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label for="capacidade" class="form-label">Capacidade</label>
-                        <input type="number" class="form-control" name="capacidade" id="capacidade">
+                        <input type="number" class="form-control" name="capacidade" id="capacidade" value="{{ sala.capacidade if sala else '' }}">
                     </div>
                     <div class="mb-3">
                         <label for="descricao" class="form-label">Descrição</label>
-                        <textarea class="form-control" name="descricao" id="descricao" cols="30" rows="10"></textarea>
+                        <textarea class="form-control" name="descricao" id="descricao" cols="30" rows="10">{{ sala.descricao if sala else '' }}</textarea>
                     </div>
-                    <button type="submit" class="btn btn-dark">Cadastrar</button>
+                    <button type="submit" class="btn btn-dark">{{ 'Salvar' if editar else 'Cadastrar' }}</button>
                 </form>
             </div>
         </div>
