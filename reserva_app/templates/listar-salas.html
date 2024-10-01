@@ -6,6 +6,34 @@
         <h1>Lista de Salas</h1>
       </div>
     </div>
+
+    <div class="row">
+      <div class="col">
+        <form method="POST">
+          <br>
+          <div class="form-group">
+            <label for="sala_id">Buscar por ID da Sala</label>
+            <input type="text" class="form-control" id="sala_id" name="sala_id" placeholder="Digite o ID da sala">
+          </div>
+          <br>
+          <button class="btn btn-sm btn-dark" type="submit">Buscar</button>
+        </form>
+      </div>
+    </div>
+
+    {% if sala_encontrada %}
+      <div class="row mt-4">
+        <div class="col">
+          <h2>Sala Encontrada</h2>
+          <p>ID: {{ sala_encontrada.id }}</p>
+          <p>Tipo: {{ sala_encontrada.tipo }}</p>
+          <p>Capacidade: {{ sala_encontrada.capacidade }}</p>
+          <p>Descrição: {{ sala_encontrada.descricao }}</p>
+          <p>Ativa: {{ sala_encontrada.ativa }}</p>
+        </div>
+      </div>
+    {% endif %}
+
     <div class="row">
       <div class="col">
         <div class="table-responsive">

@@ -1,4 +1,5 @@
 from flask import Flask, redirect, render_template, request, url_for
+import random
 import uuid, base64, hashlib, datetime
 
 app = Flask(__name__)
@@ -37,9 +38,10 @@ def mensagem_erro():
             error_message = "E-mail ou senha incorretos. Tente novamente."
     return render_template("login.html", error_message=error_message)
 
-# Cadastrar e carregar salas
+
+# Cadastrar, carregar e buscar salas
 def cadastrar_sala(s):
-    sala_id = str(uuid.uuid4())
+    sala_id = str(random.randint(10000000, 99999999))
     linha = f"\n{sala_id},{s['tipo']},{s['capacidade']},{s['descricao']},Sim"
     with open("salas.csv", "a") as file:
         file.write(linha)
@@ -57,7 +59,25 @@ def carregar_salas():
                 "ativa": ativa
             }
             salas.append(sala)
+    salas.sort(key=lambda sala: sala['id'])
     return salas
+
+def busca_binaria_salas(salas, sala_id):
+    inicio = 0
+    fim = len(salas) - 1
+
+    while inicio <= fim:
+        meio = (inicio + fim) // 2
+        sala_atual = salas[meio]
+
+        if sala_atual["id"] == sala_id:
+            return sala_atual
+        elif sala_atual["id"] < sala_id:
+            inicio = meio + 1
+        else:
+            fim = meio - 1
+
+    return None
 
 # Rotas
 @app.route("/", methods=["GET", "POST"])
@@ -81,10 +101,17 @@ def cadastrar():
         return redirect(url_for("index"))
     return render_template("cadastro.html")
 
-@app.route("/gerenciar/lista-salas")
+@app.route("/gerenciar/lista-salas", methods=["GET", "POST"])
 def lista_salas():
     salas = carregar_salas()
-    return render_template("listar-salas.html", salas=salas)
+    sala_encontrada = None
+
+    if request.method == "POST":
+        sala_id = request.form.get("sala_id")
+        sala_encontrada = busca_binaria_salas(salas, sala_id)
+
+    return render_template("listar-salas.html", salas=salas, sala_encontrada=sala_encontrada)
+
 
 # Cadastrar salas
 @app.route("/gerenciar/cadastrar-salas", methods=["GET", "POST"])
@@ -164,11 +191,12 @@ def editar_sala(sala_id):
                 file.write(linha)
         
         return redirect(url_for("lista_salas"))
-    
+
     salas = carregar_salas()
-    sala = next((s for s in salas if s["id"] == sala_id), None)
+    sala = busca_binaria_salas(salas, sala_id)
     
     return render_template("cadastrar-sala.html", sala=sala, editar=True)
+
 
 # Reservas
 @app.route("/reservas")
@@ -234,5 +262,3 @@ def salvar_reserva(sala_id, inicio, fim):
     linha = f"{sala_id},{inicio},{fim}\n"
     with open("reservas.csv", "a") as file:
         file.write(linha)
-
-# TODO: detalhe-reserva --> nome de usuario, gerar comprovante pdf, cancelar reserva
