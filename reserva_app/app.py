@@ -68,19 +68,38 @@ def busca_binaria_usuario(usuarios, chave):
             fim = meio - 1
     return None
 
+def busca_binaria_email(usuarios, email):
+    inicio = 0
+    fim = len(usuarios) - 1
+    while inicio <= fim:
+        meio = (inicio + fim) // 2
+        if usuarios[meio]['email'].lower() == email.lower():
+            return usuarios[meio]
+        elif usuarios[meio]['email'].lower() < email.lower():
+            inicio = meio + 1
+        else:
+            fim = meio - 1
+    return None
+
+
 @app.route("/gerenciar/lista-usuarios", methods=["GET", "POST"])
 def lista_usuarios():
     usuarios = carregar_usuarios()
 
-    usuarios_ordenados_por_nome = sorted(usuarios, key=lambda u: u['nome'].lower())
+    usuarios_sortedname = sorted(usuarios, key=lambda u: u['nome'].lower())
+    usuarios_sortedemail = sorted(usuarios, key=lambda u: u['email'].lower())
 
     usuario_encontrado = None
 
     if request.method == "POST":
         nome_usuario = request.form.get("nome_usuario")
+        email_usuario = request.form.get("email_usuario")
         
         if nome_usuario:
-            usuario_encontrado = busca_binaria_usuario(usuarios_ordenados_por_nome, nome_usuario)
+            usuario_encontrado = busca_binaria_usuario(usuarios_sortedname, nome_usuario)
+        
+        elif email_usuario:
+            usuario_encontrado = busca_binaria_email(usuarios_sortedemail, email_usuario)
         
         if usuario_encontrado:
             return render_template("listar-usuarios.html", usuarios=[usuario_encontrado])
