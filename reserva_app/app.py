@@ -1,8 +1,10 @@
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, url_for, session
 import random
 import uuid, base64, hashlib, datetime
 
 app = Flask(__name__)
+
+app.secret_key = 'testingsecretkey'
 
 # Cadastrar e validar usuario
 def cadastrar_usuario(u):
@@ -23,6 +25,7 @@ def validar_usuario(email, password):
             salt = salt.encode('utf-8')
             hashed_password = hashlib.sha512(password + salt).hexdigest()
             if email == user_email and hashed_password == user_password:
+                session['user'] = nome
                 return True
     return False
 
@@ -90,6 +93,11 @@ def index():
         else:
             return redirect(url_for("index"))
     return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.pop('user', None) 
+    return redirect(url_for("login.html"))
 
 @app.route("/cadastro", methods=["GET", "POST"])
 def cadastrar():
@@ -199,26 +207,44 @@ def editar_sala(sala_id):
 
 
 # Reservas
-@app.route("/reservas")
+"""@app.route("/reservas")
 def reservas():
     return render_template("reservas.html")
+"""
+
+@app.route("/reservas", methods=["GET", "POST"])
+def reservas():
+    reservas = carregar_reservas()  
+    reserva_encontrada = None  
+
+    if request.method == "POST":
+        reserva_id = request.form.get("id_reserva")
+        reserva_encontrada = busca_binaria_reserva(reservas, reserva_id)
+
+    return render_template("reservas.html", reservas=reservas, reserva_encontrada=reserva_encontrada)
+
 
 def carregar_reservas():
     reservas = []
     with open("reservas.csv", "r") as file:
         for linha in file:
-            sala_id, inicio, fim = linha.strip().split(",")
+            id_reserva, sala_id, inicio, fim, usuario = linha.strip().split(",")
             reservas.append({
+                "id_reserva": id_reserva,
                 "sala_id": sala_id,
                 "inicio": datetime.datetime.fromisoformat(inicio),
-                "fim": datetime.datetime.fromisoformat(fim)
+                "fim": datetime.datetime.fromisoformat(fim),
+                "usuario": usuario
             })
     return reservas
 
-def salvar_reserva(sala_id, inicio, fim):
-    linha = f"{sala_id},{inicio},{fim}\n"
-    with open("reservas.csv", "a") as file:
-        file.write(linha)
+
+def gerar_id_reserva():
+    reservas = carregar_reservas()
+    if reservas:
+        ultimo_id = int(reservas[-1]["id_reserva"][2:])  
+        return "RE" + str(ultimo_id + 1)  
+    return "RE1"  
 
 def verificar_conflito(sala_id, inicio, fim):
     reservas = carregar_reservas()
@@ -228,16 +254,40 @@ def verificar_conflito(sala_id, inicio, fim):
                 return True
     return False
 
+
+def busca_binaria_reserva(reservas, id_reserva):
+    inicio = 0
+    fim = len(reservas) - 1
+
+    while inicio <= fim:
+        meio = (inicio + fim) // 2
+        reserva_atual = reservas[meio]
+
+        if reserva_atual["id_reserva"] == id_reserva:
+            return reserva_atual
+        elif reserva_atual["id_reserva"] < id_reserva:
+            inicio = meio + 1
+        else:
+            fim = meio - 1
+
+    return None
+
+
 @app.route("/detalhe-reserva")
 def detalhe_reserva():
+    id_reserva = request.args.get("id_reserva")
     sala_id = request.args.get("sala_id")
     inicio = request.args.get("inicio")
     fim = request.args.get("fim")
+    inicio_dt = datetime.datetime.fromisoformat(inicio)
+    fim_dt = datetime.datetime.fromisoformat(fim)
 
     salas = carregar_salas()
     sala = next((s for s in salas if s["id"] == sala_id), None)
 
-    return render_template("reserva/detalhe-reserva.html", sala=sala, inicio=inicio, fim=fim)
+    usuario = session['user']
+
+    return render_template("reserva/detalhe-reserva.html", id_reserva=id_reserva, sala=sala, inicio=inicio_dt, fim=fim_dt, usuario=usuario)
 
 
 @app.route("/reservar", methods=["GET", "POST"])
@@ -247,18 +297,22 @@ def reservar_sala():
         sala_id = request.form.get("sala")
         inicio = request.form.get("inicio")
         fim = request.form.get("fim")
+
         inicio_dt = datetime.datetime.fromisoformat(inicio)
         fim_dt = datetime.datetime.fromisoformat(fim)
 
         if verificar_conflito(sala_id, inicio_dt, fim_dt):
             return render_template("reservar-sala.html", salas=salas, error="Conflito de horário! Escolha outro horário.")
-
-        salvar_reserva(sala_id, inicio, fim)
-        return redirect(url_for("detalhe_reserva", sala_id=sala_id, inicio=inicio, fim=fim))
+        
+        usuario = session['user']  
+        id_reserva = gerar_id_reserva()  
+        salvar_reserva(id_reserva, sala_id, inicio, fim, usuario)
+        
+        return redirect(url_for("detalhe_reserva", id_reserva=id_reserva, sala_id=sala_id, inicio=inicio, fim=fim))
 
     return render_template("reservar-sala.html", salas=salas)
 
-def salvar_reserva(sala_id, inicio, fim):
-    linha = f"{sala_id},{inicio},{fim}\n"
+def salvar_reserva(id_reserva, sala_id, inicio, fim, usuario):
+    linha = f"{id_reserva},{sala_id},{inicio},{fim},{usuario}\n"
     with open("reservas.csv", "a") as file:
         file.write(linha)

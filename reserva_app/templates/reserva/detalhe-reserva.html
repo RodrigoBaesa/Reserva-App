@@ -5,9 +5,9 @@
       <div class="col">
         <h1>Detalhes da Reserva</h1>
         <p><b>Sala:</b> {{ sala.id }} - {{ sala.descricao }}</p>
-        <p><b>Início:</b> {{ inicio }}</p>
-        <p><b>Fim:</b> {{ fim }}</p>
-        <p>Reservado para Nome do Usuário</p>
+        <p><b>Início:</b> {{ inicio.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p><b>Fim:</b> {{ fim.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p>Reservado para {{usuario}}</p>
       </div>
     </div>
     <div class="row">
@@ -22,6 +22,11 @@
         <form action="">
           <button class="btn btn-dark">Cancelar Reserva</button>
         </form>
+      </div>
+    </div>
+    <div class="row mt-4">
+      <div class="col">
+        <a href="{{ url_for('reservas') }}" class="btn btn-dark">Voltar para Lista de Reservas</a>
       </div>
     </div>
   </div>
