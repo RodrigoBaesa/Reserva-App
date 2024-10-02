@@ -8,19 +8,27 @@
       </div>
     </div>
 
-    <div class="row">
-      <div class="col">
-        <form method="POST">
-          <br>
-          <div class="form-group">
-            <label for="id_reserva">Buscar por ID da Reserva</label>
-            <input type="text" class="form-control" id="id_reserva" name="id_reserva" placeholder="Digite o ID da reserva">
-          </div>
-          <br>
-          <button class="btn btn-sm btn-dark" type="submit">Buscar</button>
-        </form>
+    <form method="POST">
+      <div class="form-group">
+        <label for="id_reserva">Buscar por ID da Reserva</label>
+        <input type="text" class="form-control" id="id_reserva" name="id_reserva" placeholder="Digite o ID da reserva">
       </div>
-    </div>
+    
+      <br><h4>Ou</h4>
+    
+      <div class="form-group">
+        <br><label for="inicio">Data de Início</label>
+        <input type="datetime-local" class="form-control" id="inicio" name="inicio" placeholder="Digite a data e hora de início">
+      </div>
+    
+      <div class="form-group">
+        <br><label for="fim">Data de Fim</label>
+        <input type="datetime-local" class="form-control" id="fim" name="fim" placeholder="Digite a data e hora de fim">
+      </div>
+    
+      <br><button class="btn btn-dark" type="submit">Buscar</button>
+    </form>
+    
 
     {% if reserva_encontrada %}
       <div class="row mt-4">
@@ -34,6 +42,7 @@
         </div>
       </div>
     {% endif %}
+
 
     <div class="row">
       <div class="col">

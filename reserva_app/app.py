@@ -1,6 +1,8 @@
 from flask import Flask, redirect, render_template, request, url_for, session
 import random
 import uuid, base64, hashlib, datetime
+from bisect import bisect_left, bisect_right
+
 
 app = Flask(__name__)
 
@@ -214,15 +216,26 @@ def reservas():
 
 @app.route("/reservas", methods=["GET", "POST"])
 def reservas():
-    reservas = carregar_reservas()  
-    reserva_encontrada = None  
+    reservas = carregar_reservas()
+    reservas_filtradas = reservas  
+    reserva_encontrada = None
 
     if request.method == "POST":
         reserva_id = request.form.get("id_reserva")
-        reserva_encontrada = busca_binaria_reserva(reservas, reserva_id)
+        inicio = request.form.get("inicio")
+        fim = request.form.get("fim")
 
-    return render_template("reservas.html", reservas=reservas, reserva_encontrada=reserva_encontrada)
+        if reserva_id:
+            reserva_encontrada = busca_binaria_reserva(reservas, reserva_id)
+            if reserva_encontrada:
+                return render_template("reservas.html", reservas=[reserva_encontrada], reserva_encontrada=reserva_encontrada)
 
+        elif inicio and fim:
+            inicio_dt = datetime.datetime.fromisoformat(inicio)
+            fim_dt = datetime.datetime.fromisoformat(fim)
+            reservas_filtradas = busca_binaria_intervalo(reservas, inicio_dt, fim_dt)
+    
+    return render_template("reservas.html", reservas=reservas_filtradas, reserva_encontrada=reserva_encontrada)
 
 def carregar_reservas():
     reservas = []
@@ -271,6 +284,15 @@ def busca_binaria_reserva(reservas, id_reserva):
             fim = meio - 1
 
     return None
+
+def busca_binaria_intervalo(reservas, inicio_periodo, fim_periodo):
+
+    reservas_ordenadas = sorted(reservas, key=lambda x: x["inicio"])
+
+    indices_inicio = bisect_left([reserva["inicio"] for reserva in reservas_ordenadas], inicio_periodo)
+    indices_fim = bisect_right([reserva["fim"] for reserva in reservas_ordenadas], fim_periodo)
+
+    return reservas_ordenadas[indices_inicio:indices_fim]
 
 
 @app.route("/detalhe-reserva")
