@@ -43,6 +43,52 @@ def mensagem_erro():
             error_message = "E-mail ou senha incorretos. Tente novamente."
     return render_template("login.html", error_message=error_message)
 
+def carregar_usuarios():
+    usuarios = []
+    with open("usuarios.csv", "r") as file:
+        for linha in file:
+            nome, email, password, salt = linha.strip().split(",")
+            usuario = {
+                "nome": nome,
+                "email": email,
+            }
+            usuarios.append(usuario)
+    return usuarios
+
+def busca_binaria_usuario(usuarios, chave):
+    inicio = 0
+    fim = len(usuarios) - 1
+    while inicio <= fim:
+        meio = (inicio + fim) // 2
+        if usuarios[meio]['nome'].lower() == chave.lower():
+            return usuarios[meio]
+        elif usuarios[meio]['nome'].lower() < chave.lower():
+            inicio = meio + 1
+        else:
+            fim = meio - 1
+    return None
+
+@app.route("/gerenciar/lista-usuarios", methods=["GET", "POST"])
+def lista_usuarios():
+    usuarios = carregar_usuarios()
+
+    # Ordenar os usuários por nome para a busca binária
+    usuarios_ordenados_por_nome = sorted(usuarios, key=lambda u: u['nome'].lower())
+
+    usuario_encontrado = None
+
+    if request.method == "POST":
+        nome_usuario = request.form.get("nome_usuario")
+        
+        if nome_usuario:
+            usuario_encontrado = busca_binaria_usuario(usuarios_ordenados_por_nome, nome_usuario)
+        
+        # Se o usuário for encontrado, mostrar somente o resultado filtrado
+        if usuario_encontrado:
+            return render_template("listar-usuarios.html", usuarios=[usuario_encontrado])
+
+    # Retornar todos os usuários se não houver busca
+    return render_template("listar-usuarios.html", usuarios=usuarios)
 
 # Cadastrar, carregar e buscar salas
 def cadastrar_sala(s):
@@ -218,24 +264,35 @@ def reservas():
 def reservas():
     reservas = carregar_reservas()
     reservas_filtradas = reservas  
-    reserva_encontrada = None
+    reserva_encontrada = None  
 
     if request.method == "POST":
-        reserva_id = request.form.get("id_reserva")
+        id_reserva = request.form.get("id_reserva")
         inicio = request.form.get("inicio")
         fim = request.form.get("fim")
+        usuario = request.form.get("usuario")  
 
-        if reserva_id:
-            reserva_encontrada = busca_binaria_reserva(reservas, reserva_id)
+        if id_reserva:
+            reserva_encontrada = busca_binaria_reserva(reservas, id_reserva)
             if reserva_encontrada:
                 return render_template("reservas.html", reservas=[reserva_encontrada], reserva_encontrada=reserva_encontrada)
 
-        elif inicio and fim:
+        if usuario:
+            reservas_filtradas = buscar_reservas_por_usuario(reservas, usuario)
+            return render_template("reservas.html", reservas=reservas_filtradas)
+
+        if inicio and fim:
             inicio_dt = datetime.datetime.fromisoformat(inicio)
             fim_dt = datetime.datetime.fromisoformat(fim)
-            reservas_filtradas = busca_binaria_intervalo(reservas, inicio_dt, fim_dt)
-    
-    return render_template("reservas.html", reservas=reservas_filtradas, reserva_encontrada=reserva_encontrada)
+            reservas_filtradas = [reserva for reserva in reservas if reserva["inicio"] >= inicio_dt and reserva["fim"] <= fim_dt]
+
+            if usuario:
+                reservas_filtradas = [reserva for reserva in reservas_filtradas if reserva["usuario"].lower() == usuario.lower()]
+
+            return render_template("reservas.html", reservas=reservas_filtradas)
+
+    return render_template("reservas.html", reservas=reservas, reserva_encontrada=reserva_encontrada)
+
 
 def carregar_reservas():
     reservas = []
@@ -249,7 +306,9 @@ def carregar_reservas():
                 "fim": datetime.datetime.fromisoformat(fim),
                 "usuario": usuario
             })
+    reservas.sort(key=lambda r: r["usuario"].lower())
     return reservas
+
 
 
 def gerar_id_reserva():
@@ -293,6 +352,10 @@ def busca_binaria_intervalo(reservas, inicio_periodo, fim_periodo):
     indices_fim = bisect_right([reserva["fim"] for reserva in reservas_ordenadas], fim_periodo)
 
     return reservas_ordenadas[indices_inicio:indices_fim]
+
+
+def buscar_reservas_por_usuario(reservas, usuario):
+    return [reserva for reserva in reservas if reserva["usuario"].lower() == usuario.lower()]
 
 
 @app.route("/detalhe-reserva")

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container">
+    <div class="row mt-4">
+      <div class="col">
+        <h1>Lista de Usuários</h1>
+      </div>
+    </div>
+
+    <form method="POST">
+      <div class="form-group">
+        <label for="nome_usuario">Buscar por Nome</label>
+        <input type="text" class="form-control" id="nome_usuario" name="nome_usuario" placeholder="Digite o nome do usuário">
+      </div>
+     
+      <button type="submit" class="btn btn-sm btn-dark mt-3">Buscar</button>
+    </form>
+
+    <div class="table-responsive mt-4">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Nome</th>
+            <th scope="col">Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for usuario in usuarios %}
+          <tr>
+            <td>{{ usuario.nome }}</td>
+            <td>{{ usuario.email }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

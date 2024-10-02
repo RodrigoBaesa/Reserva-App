@@ -27,15 +27,20 @@
                     </li>
 
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if '/templates/listar-salas.html' in request.path or '/templates/cadastrar-sala.html' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown"
+                        <a class="nav-link dropdown-toggle {% if '/gerenciar/lista-salas' in request.path or '/gerenciar/cadastrar-salas' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown"
                             aria-expanded="false">
                             Gerenciar Salas
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item {% if request.path == '/templates/listar-salas.html' %}active{% endif %}" href="/gerenciar/lista-salas">Listar Salas</a></li>
-                            <li><a class="dropdown-item {% if request.path == '/templates/cadastrar-sala.html' %}active{% endif %}" href="/gerenciar/cadastrar-salas">Cadastrar Sala</a></li>
+                            <li><a class="dropdown-item {% if request.path == '/gerenciar/lista-salas' %}active{% endif %}" href="/gerenciar/lista-salas">Listar Salas</a></li>
+                            <li><a class="dropdown-item {% if request.path == '/gerenciar/cadastrar-salas' %}active{% endif %}" href="/gerenciar/cadastrar-salas">Cadastrar Sala</a></li>
                         </ul>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/gerenciar/lista-usuarios' %}active{% endif %}" href="/gerenciar/lista-usuarios">Listar Usuários</a>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/logout' %}active{% endif %}" href="/">Logout</a>
                     </li>

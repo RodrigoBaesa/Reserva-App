@@ -9,26 +9,27 @@
     </div>
 
     <form method="POST">
+      <br>
       <div class="form-group">
-        <label for="id_reserva">Buscar por ID da Reserva</label>
-        <input type="text" class="form-control" id="id_reserva" name="id_reserva" placeholder="Digite o ID da reserva">
+          <br><label for="id_reserva">Buscar por ID da Reserva</label>
+          <input type="text" class="form-control" id="id_reserva" name="id_reserva" placeholder="Digite o ID da reserva">
       </div>
-    
-      <br><h4>Ou</h4>
-    
       <div class="form-group">
-        <br><label for="inicio">Data de Início</label>
-        <input type="datetime-local" class="form-control" id="inicio" name="inicio" placeholder="Digite a data e hora de início">
+          <br><label for="usuario">Buscar por Usuário</label>
+          <input type="text" class="form-control" id="usuario" name="usuario" placeholder="Digite o nome do usuário">
       </div>
-    
       <div class="form-group">
-        <br><label for="fim">Data de Fim</label>
-        <input type="datetime-local" class="form-control" id="fim" name="fim" placeholder="Digite a data e hora de fim">
+          <br><label for="inicio">Início</label>
+          <input type="datetime-local" class="form-control" id="inicio" name="inicio">
       </div>
-    
-      <br><button class="btn btn-dark" type="submit">Buscar</button>
-    </form>
-    
+      <div class="form-group">
+          <br><label for="fim">Fim</label>
+          <input type="datetime-local" class="form-control" id="fim" name="fim">
+      </div>
+      <br>
+      <button class="btn btn-sm btn-dark" type="submit">Buscar</button>
+  </form>
+  
 
     {% if reserva_encontrada %}
       <div class="row mt-4">
