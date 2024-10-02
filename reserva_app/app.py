@@ -72,7 +72,6 @@ def busca_binaria_usuario(usuarios, chave):
 def lista_usuarios():
     usuarios = carregar_usuarios()
 
-    # Ordenar os usuários por nome para a busca binária
     usuarios_ordenados_por_nome = sorted(usuarios, key=lambda u: u['nome'].lower())
 
     usuario_encontrado = None
@@ -83,11 +82,9 @@ def lista_usuarios():
         if nome_usuario:
             usuario_encontrado = busca_binaria_usuario(usuarios_ordenados_por_nome, nome_usuario)
         
-        # Se o usuário for encontrado, mostrar somente o resultado filtrado
         if usuario_encontrado:
             return render_template("listar-usuarios.html", usuarios=[usuario_encontrado])
 
-    # Retornar todos os usuários se não houver busca
     return render_template("listar-usuarios.html", usuarios=usuarios)
 
 # Cadastrar, carregar e buscar salas
