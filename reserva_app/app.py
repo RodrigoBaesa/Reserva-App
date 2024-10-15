@@ -1,4 +1,5 @@
 from flask import Flask, redirect, render_template, request, url_for, session
+import mysql.connector
 import random
 import uuid, base64, hashlib, datetime
 from bisect import bisect_left, bisect_right
@@ -8,28 +9,54 @@ app = Flask(__name__)
 
 app.secret_key = 'testingsecretkey'
 
+def conexao_abrir():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="admin",
+        database="reservas"
+    )
+
 # Cadastrar e validar usuario
 def cadastrar_usuario(u):
-    password = u['password'].encode('utf-8')
-    salt = uuid.uuid4().hex.encode('utf-8')
-    hashed_password = hashlib.sha512(password + salt).hexdigest()
+    con = conexao_abrir()
+    cursor = con.cursor()
 
-    linha = f"\n{u['nome']},{u['email']},{hashed_password},{salt.decode('utf-8')}"
-    with open("usuarios.csv", "a") as file:
-        file.write(linha)
+    senha_hash = hashlib.sha512(u['password'].encode('utf-8')).hexdigest()
+
+    query = "INSERT INTO usuario (nome, email, senha) VALUES (%s, %s, %s)"
+    cursor.execute(query, (u['nome'], u['email'], senha_hash))
+
+    con.commit()
+    cursor.close()
+    con.close()
 
 def validar_usuario(email, password):
-    password = password.encode('utf-8')
-    with open("usuarios.csv", "r") as file:
-        linhas = file.readlines()
-        for linha in linhas:
-            nome, user_email, user_password, salt = linha.strip().split(",")
-            salt = salt.encode('utf-8')
-            hashed_password = hashlib.sha512(password + salt).hexdigest()
-            if email == user_email and hashed_password == user_password:
-                session['user'] = nome
-                return True
+    con = conexao_abrir()
+    cursor = con.cursor(dictionary=True)
+
+    query = "SELECT * FROM usuario WHERE email = %s"
+    cursor.execute(query, (email,))
+    usuario = cursor.fetchone()
+
+    cursor.close()
+    con.close()
+
+    if usuario and usuario['senha'] == hashlib.sha512(password.encode('utf-8')).hexdigest():
+        session['user'] = usuario['nome']
+        return True
     return False
+
+def carregar_usuarios():
+    conn = conexao_abrir()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT nome, email FROM usuario")
+    usuarios = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return usuarios
 
 @app.route("/", methods=["GET", "POST"])
 def mensagem_erro():
@@ -42,18 +69,6 @@ def mensagem_erro():
         else:
             error_message = "E-mail ou senha incorretos. Tente novamente."
     return render_template("login.html", error_message=error_message)
-
-def carregar_usuarios():
-    usuarios = []
-    with open("usuarios.csv", "r") as file:
-        for linha in file:
-            nome, email, password, salt = linha.strip().split(",")
-            usuario = {
-                "nome": nome,
-                "email": email,
-            }
-            usuarios.append(usuario)
-    return usuarios
 
 def busca_binaria_usuario(usuarios, chave):
     inicio = 0
@@ -108,25 +123,25 @@ def lista_usuarios():
 
 # Cadastrar, carregar e buscar salas
 def cadastrar_sala(s):
-    sala_id = str(random.randint(10000000, 99999999))
-    linha = f"\n{sala_id},{s['tipo']},{s['capacidade']},{s['descricao']},Sim"
-    with open("salas.csv", "a") as file:
-        file.write(linha)
+    con = conexao_abrir()
+    cursor = con.cursor()
+
+    query = "INSERT INTO salas (numero, tipo, capacidade, descricao) VALUES (%s, %s, %s, %s)"
+    cursor.execute(query, (random.randint(1, 10000000), s['tipo'], s['capacidade'], s['descricao']))
+
+    con.commit()
+    cursor.close()
+    con.close()
 
 def carregar_salas():
-    salas = []
-    with open("salas.csv", "r") as file:
-        for linha in file:
-            sala_id, tipo, capacidade, descricao, ativa = linha.strip().split(",")
-            sala = {
-                "id": sala_id,
-                "tipo": tipo,
-                "capacidade": capacidade,
-                "descricao": descricao,
-                "ativa": ativa
-            }
-            salas.append(sala)
-    salas.sort(key=lambda sala: sala['id'])
+    con = conexao_abrir()
+    cursor = con.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM salas")
+    salas = cursor.fetchall()
+
+    cursor.close()
+    con.close()
     return salas
 
 def busca_binaria_salas(salas, sala_id):
@@ -192,83 +207,76 @@ def cadastrar_salas():
         tipo = request.form.get("tipo")
         capacidade = request.form.get("capacidade")
         descricao = request.form.get("descricao")
-        sala_id = request.form.get("sala_id")
-        
-        if sala_id:
-            salas = carregar_salas()
-            for sala in salas:
-                if sala["id"] == sala_id:
-                    sala["tipo"] = tipo
-                    sala["capacidade"] = capacidade
-                    sala["descricao"] = descricao
-            
-            with open("salas.csv", "w") as file:
-                for sala in salas:
-                    linha = f"{sala['id']},{sala['tipo']},{sala['capacidade']},{sala['descricao']},{sala['ativa']}\n"
-                    file.write(linha)
-        else:
-            cadastrar_sala({"tipo": tipo, "capacidade": capacidade, "descricao": descricao})
-        
+        cadastrar_sala({"tipo": tipo, "capacidade": capacidade, "descricao": descricao})
         return redirect(url_for("lista_salas"))
-    
+
     return render_template("cadastrar-sala.html")
 
-
 # Excluir salas
-@app.route("/gerenciar/excluir-sala/<sala_id>", methods=["POST"])
+@app.route("/gerenciar/excluir-sala/<int:sala_id>", methods=["POST"])
 def excluir_sala(sala_id):
-    salas = carregar_salas()
-    salas = [sala for sala in salas if sala["id"] != sala_id]
-    
-    with open("salas.csv", "w") as file:
-        for sala in salas:
-            linha = f"{sala['id']},{sala['tipo']},{sala['capacidade']},{sala['descricao']}\n"
-            file.write(linha)
-    
+    con = conexao_abrir()
+    cursor = con.cursor()
+
+    query = "DELETE FROM salas WHERE id = %s"
+    cursor.execute(query, (sala_id,))
+
+    con.commit()
+    cursor.close()
+    con.close()
+
     return redirect(url_for("lista_salas"))
 
 # Desativar salas
-@app.route("/gerenciar/desativar-sala/<sala_id>", methods=["POST"])
+@app.route("/gerenciar/desativar-sala/<int:sala_id>", methods=["POST"])
 def desativar_sala(sala_id):
-    salas = carregar_salas()
-    for sala in salas:
-        if sala["id"] == sala_id:
-            sala["ativa"] = "Não" if sala["ativa"] == "Sim" else "Sim"
-    
-    with open("salas.csv", "w") as file:
-        for sala in salas:
-            linha = f"{sala['id']},{sala['tipo']},{sala['capacidade']},{sala['descricao']},{sala['ativa']}\n"
-            file.write(linha)
-    
+    con = conexao_abrir()
+    cursor = con.cursor(dictionary=True)
+
+    query_select = "SELECT ativa FROM salas WHERE id = %s"
+    cursor.execute(query_select, (sala_id,))
+    sala = cursor.fetchone()
+
+    nova_ativa = "Não" if sala["ativa"] == "Sim" else "Sim"
+
+    query_update = "UPDATE salas SET ativa = %s WHERE id = %s"
+    cursor.execute(query_update, (nova_ativa, sala_id))
+
+    con.commit()
+    cursor.close()
+    con.close()
+
     return redirect(url_for("lista_salas"))
 
+
 # Editar Sala
-@app.route("/gerencia/editar-sala/<sala_id>", methods=["GET", "POST"])
+@app.route("/gerenciar/editar-sala/<int:sala_id>", methods=["GET", "POST"])
 def editar_sala(sala_id):
+    con = conexao_abrir()
+    cursor = con.cursor(dictionary=True)
+
     if request.method == "POST":
         tipo = request.form.get("tipo")
         capacidade = request.form.get("capacidade")
         descricao = request.form.get("descricao")
-        
-        salas = carregar_salas()
-        for sala in salas:
-            if sala["id"] == sala_id:
-                sala["tipo"] = tipo
-                sala["capacidade"] = capacidade
-                sala["descricao"] = descricao
-        
-        with open("salas.csv", "w") as file:
-            for sala in salas:
-                linha = f"{sala['id']},{sala['tipo']},{sala['capacidade']},{sala['descricao']},{sala['ativa']}\n"
-                file.write(linha)
-        
+
+        query_update = "UPDATE salas SET tipo = %s, capacidade = %s, descricao = %s WHERE id = %s"
+        cursor.execute(query_update, (tipo, capacidade, descricao, sala_id))
+
+        con.commit()
+        cursor.close()
+        con.close()
+
         return redirect(url_for("lista_salas"))
-
-    salas = carregar_salas()
-    sala = busca_binaria_salas(salas, sala_id)
     
-    return render_template("cadastrar-sala.html", sala=sala, editar=True)
+    query_select = "SELECT * FROM salas WHERE id = %s"
+    cursor.execute(query_select, (sala_id,))
+    sala = cursor.fetchone()
 
+    cursor.close()
+    con.close()
+
+    return render_template("cadastrar-sala.html", sala=sala, editar=True)
 
 # Reservas
 """@app.route("/reservas")
@@ -309,30 +317,35 @@ def reservas():
 
     return render_template("reservas.html", reservas=reservas, reserva_encontrada=reserva_encontrada)
 
-
 def carregar_reservas():
-    reservas = []
-    with open("reservas.csv", "r") as file:
-        for linha in file:
-            id_reserva, sala_id, inicio, fim, usuario = linha.strip().split(",")
-            reservas.append({
-                "id_reserva": id_reserva,
-                "sala_id": sala_id,
-                "inicio": datetime.datetime.fromisoformat(inicio),
-                "fim": datetime.datetime.fromisoformat(fim),
-                "usuario": usuario
-            })
-    reservas.sort(key=lambda r: r["usuario"].lower())
+    con = conexao_abrir()
+    cursor = con.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM reservas")
+    reservas = cursor.fetchall()
+
+    for reserva in reservas:
+        reserva["inicio"] = datetime.datetime.fromisoformat(reserva["inicio"].isoformat())
+        reserva["fim"] = datetime.datetime.fromisoformat(reserva["fim"].isoformat())
+
+    cursor.close()
+    con.close()
     return reservas
 
-
-
 def gerar_id_reserva():
-    reservas = carregar_reservas()
-    if reservas:
-        ultimo_id = int(reservas[-1]["id_reserva"][2:])  
-        return "RE" + str(ultimo_id + 1)  
-    return "RE1"  
+    con = conexao_abrir()
+    cursor = con.cursor()
+
+    cursor.execute("SELECT MAX(id_reserva) FROM reservas")
+    ultimo_id = cursor.fetchone()[0]
+
+    cursor.close()
+    con.close()
+
+    if ultimo_id:
+        novo_id = int(ultimo_id[2:]) + 1
+        return "RE" + str(novo_id)
+    return "RE1"
 
 def verificar_conflito(sala_id, inicio, fim):
     reservas = carregar_reservas()
@@ -341,7 +354,6 @@ def verificar_conflito(sala_id, inicio, fim):
             if not (fim <= reserva["inicio"] or inicio >= reserva["fim"]):
                 return True
     return False
-
 
 def busca_binaria_reserva(reservas, id_reserva):
     inicio = 0
@@ -414,6 +426,12 @@ def reservar_sala():
     return render_template("reservar-sala.html", salas=salas)
 
 def salvar_reserva(id_reserva, sala_id, inicio, fim, usuario):
-    linha = f"{id_reserva},{sala_id},{inicio},{fim},{usuario}\n"
-    with open("reservas.csv", "a") as file:
-        file.write(linha)
+    con = conexao_abrir()
+    cursor = con.cursor()
+
+    query = "INSERT INTO reservas (id_reserva, sala_id, inicio, fim, usuario) VALUES (%s, %s, %s, %s, %s)"
+    cursor.execute(query, (id_reserva, sala_id, inicio, fim, usuario))
+
+    con.commit()
+    cursor.close()
+    con.close()
